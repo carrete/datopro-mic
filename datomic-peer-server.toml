@@ -1,0 +1,13 @@
+app = "datomic-peer-server"
+primary_region = "scl"
+
+[experimental]
+cmd = ["make", "run-peer-server"]
+
+[checks]
+[checks.datomic-peer-server]
+port = 8998
+type = "tcp"
+grace_period = "10s"
+interval = "15s"
+timeout = "5s"

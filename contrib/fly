@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# -*- coding: utf-8; mode: sh -*-
+set -euo pipefail
+IFS=$'\n\t'
+
+THIS="$(readlink -f "$0")"
+readonly THIS
+
+function on_exit() {
+    errcode="$1"
+}
+
+trap 'on_exit $?' EXIT
+
+function on_error() {
+    errcode=$1
+    linenum=$2
+    echo 1>&2 "[ERROR] $THIS: errcode: $errcode linenum: $linenum"
+}
+
+trap 'on_error $? $LINENO' ERR
+
+if ! command -v podman > /dev/null; then
+    # shellcheck disable=SC2016
+    echo 1>&2 'The command `podman` does not exist in PATH'
+    exit 1
+fi
+
+if [[ -z ${FLY_ACCESS_TOKEN:-} ]]; then
+    # shellcheck disable=SC2016
+    echo 1>&2 'The environment variable `FLY_ACCESS_TOKEN` is undefined'
+    exit 1
+fi
+
+PODMAN_EXTRA_RUN_ARGS=
+
+if [[ $- == *i* ]]; then
+    PODMAN_EXTRA_RUN_ARGS="-it"
+fi
+
+readonly PODMAN_EXTRA_RUN_ARGS
+
+# TODO: `--env HOME=/tmp` is required to run this script in a GitHub Action:
+#   Error accessing config directory at $HOME/.fly $HOME is not defined
+#   Error: failed determining user home directory: $HOME is not defined
+# https://github.com/carrete/hello-world-container/actions/runs/5073262904/jobs/9112053093
+
+podman run -q --rm --name fly $PODMAN_EXTRA_RUN_ARGS                            \
+    --env HOME=/tmp                                                             \
+    --volume "$PWD:/mnt/workdir"                                                \
+    --workdir /mnt/workdir                                                      \
+    docker.io/flyio/flyctl:v0.1.21                                              \
+    -t "$FLY_ACCESS_TOKEN"                                                      \
+    "$@"

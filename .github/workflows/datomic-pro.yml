@@ -1,0 +1,30 @@
+name: Datomic Pro CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Push container image to ghcr.io
+        run: make push
+    env:
+      GITHUB_USERNAME: ${{ github.actor }}
+      GITHUB_PASSWORD: ${{ github.token }}
+    permissions:
+      packages: write
+  deploy:
+    needs: [push]
+    environment: production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy container image to fly.io
+        run: make deploy
+    env:
+      FLY_ACCESS_TOKEN: ${{ secrets.FLY_ACCESS_TOKEN }}
+      FLY_ORGANIZATION: personal

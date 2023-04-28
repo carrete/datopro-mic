@@ -1,0 +1,17 @@
+app = "datomic-transactor"
+primary_region = "scl"
+
+[experimental]
+cmd = ["make", "run-transactor"]
+
+[checks]
+[checks.datomic-transactor]
+port = 4334
+type = "tcp"
+grace_period = "10s"
+interval = "15s"
+timeout = "5s"
+
+[mounts]
+source = "datomic_data"
+destination = "/srv/datomic/data"

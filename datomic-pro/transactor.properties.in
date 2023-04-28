@@ -1,0 +1,11 @@
+protocol=dev
+host=0.0.0.0
+alt-host=datomic-transactor.internal
+port=4334
+data-dir=/srv/datomic/data
+storage-access=remote
+storage-admin-password=@STORAGE_ADMIN_PASSWORD@
+storage-datomic-password=@STORAGE_DATOMIC_PASSWORD@
+memory-index-threshold=32m
+memory-index-max=256m
+object-cache-max=128m
