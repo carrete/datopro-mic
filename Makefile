@@ -8,7 +8,7 @@ SHELL := bash
 HERE := $(shell cd -P -- $(shell dirname -- $$0) && pwd -P)
 
 # https://docs.datomic.com/pro/releases.html
-DATOMIC_PRO_VERSION := 1.0.6733
+DATOMIC_PRO_VERSION := 1.0.6735
 DATOMIC_PRO_DOWNLOAD_URL := https://datomic-pro-downloads.s3.amazonaws.com/$(DATOMIC_PRO_VERSION)/datomic-pro-$(DATOMIC_PRO_VERSION).zip
 
 CONTAINER_SLUG := carrete/datopro-mic
