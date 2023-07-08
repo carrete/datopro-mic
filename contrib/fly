@@ -34,7 +34,7 @@ fi
 
 PODMAN_EXTRA_RUN_ARGS=
 
-if [[ $- == *i* ]]; then
+if test -t 0; then
     PODMAN_EXTRA_RUN_ARGS="-it"
 fi
 
