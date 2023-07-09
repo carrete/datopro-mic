@@ -50,11 +50,11 @@ createdb: is-in-container is-defined-DATOMIC_DATABASE_URL
 .PHONY: run-peer-server
 run-peer-server: is-in-container is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DATOMIC_SECRET_ACCESS_KEY is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL createdb
 	@datomic-pro/bin/run -m datomic.peer-server                             \
-	    -a $(DATOMIC_ACCESS_KEY_ID),$(DATOMIC_SECRET_ACCESS_KEY)            \
-	    -d $(DATOMIC_DATABASE_NAME),$(DATOMIC_DATABASE_URL)                 \
+	    -a $$DATOMIC_ACCESS_KEY_ID,$$DATOMIC_SECRET_ACCESS_KEY              \
+	    -d $$DATOMIC_DATABASE_NAME,$$DATOMIC_DATABASE_URL                   \
 	    -h 0.0.0.0 -p 8998                                                  \
 	    #
 
 .PHONY: run-console
 run-console: is-in-container is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD
-	@datomic-pro/bin/console -p 8999 localhost datomic:dev://datomic-transactor.internal:4334?password=$(DATOMIC_STORAGE_DATOMIC_PASSWORD)
+	@datomic-pro/bin/console -p 8999 localhost datomic:dev://datomic-transactor.internal:4334?password=$$DATOMIC_STORAGE_DATOMIC_PASSWORD

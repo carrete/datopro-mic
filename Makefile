@@ -32,7 +32,7 @@ is-repo-clean: has-command-git
 
 .PHONY: login
 login: has-command-podman is-defined-CONTAINER_REGISTRY is-defined-GITHUB_USERNAME is-defined-GITHUB_PASSWORD
-	@echo $(GITHUB_PASSWORD) | podman login --username $(GITHUB_USERNAME) --password-stdin $(CONTAINER_REGISTRY)
+	@echo $$GITHUB_PASSWORD | podman login --username $$GITHUB_USERNAME --password-stdin $(CONTAINER_REGISTRY)
 
 .PHONY: create-network-%
 create-network-%: has-command-podman
@@ -66,8 +66,8 @@ push: is-repo-clean has-command-podman is-defined-CONTAINER_REGISTRY is-defined-
 .PHONY: run-transactor
 run-transactor: is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD build
 	@podman run --rm -it --name datomic-transactor.internal                 \
-	    --env DATOMIC_STORAGE_ADMIN_PASSWORD="$$DATOMIC_STORAGE_ADMIN_PASSWORD"     \
-	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD="$$DATOMIC_STORAGE_DATOMIC_PASSWORD" \
+	    --env DATOMIC_STORAGE_ADMIN_PASSWORD=$$DATOMIC_STORAGE_ADMIN_PASSWORD     \
+	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
 	    --network datomic                                                   \
 	    --volume datomic-data:/srv/datomic/data                             \
 	    $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)        \
@@ -76,10 +76,10 @@ run-transactor: is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STO
 .PHONY: run-peer-server
 run-peer-server: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DATOMIC_SECRET_ACCESS_KEY build
 	@podman run --rm -it --name datomic-peer-server.internal                \
-	    --env DATOMIC_DATABASE_NAME=$(DATOMIC_DATABASE_NAME)                \
-	    --env DATOMIC_DATABASE_URL=$(DATOMIC_DATABASE_URL)                  \
-	    --env DATOMIC_ACCESS_KEY_ID=$(DATOMIC_ACCESS_KEY_ID)                \
-	    --env DATOMIC_SECRET_ACCESS_KEY=$(DATOMIC_SECRET_ACCESS_KEY)        \
+	    --env DATOMIC_DATABASE_NAME=$$DATOMIC_DATABASE_NAME                 \
+	    --env DATOMIC_DATABASE_URL=$$DATOMIC_DATABASE_URL                   \
+	    --env DATOMIC_ACCESS_KEY_ID=$$DATOMIC_ACCESS_KEY_ID                 \
+	    --env DATOMIC_SECRET_ACCESS_KEY=$$DATOMIC_SECRET_ACCESS_KEY         \
 	    --network datomic                                                   \
 	    $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)        \
 	    make $@
@@ -87,9 +87,9 @@ run-peer-server: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_UR
 .PHONY: run-console
 run-console: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD build
 	@podman run --rm -it --name datomic-console.internal                    \
-	    --env DATOMIC_DATABASE_NAME=$(DATOMIC_DATABASE_NAME)                \
-	    --env DATOMIC_DATABASE_URL=$(DATOMIC_DATABASE_URL)                  \
-	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD="$$DATOMIC_STORAGE_DATOMIC_PASSWORD" \
+	    --env DATOMIC_DATABASE_NAME=$$DATOMIC_DATABASE_NAME                 \
+	    --env DATOMIC_DATABASE_URL=$$DATOMIC_DATABASE_URL                   \
+	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
 	    --network datomic                                                   \
 	    --publish 8999:8999                                                 \
 	    $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)        \
@@ -98,12 +98,12 @@ run-console: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is
 .PHONY: shell
 shell: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DATOMIC_SECRET_ACCESS_KEY is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD build
 	@podman run --rm -it --name datomic-shell.internal                      \
-	    --env DATOMIC_DATABASE_NAME=$(DATOMIC_DATABASE_NAME)                \
-	    --env DATOMIC_DATABASE_URL=$(DATOMIC_DATABASE_URL)                  \
-	    --env DATOMIC_ACCESS_KEY_ID=$(DATOMIC_ACCESS_KEY_ID)                \
-	    --env DATOMIC_SECRET_ACCESS_KEY=$(DATOMIC_SECRET_ACCESS_KEY)        \
-	    --env DATOMIC_STORAGE_ADMIN_PASSWORD="$$DATOMIC_STORAGE_ADMIN_PASSWORD"     \
-	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD="$$DATOMIC_STORAGE_DATOMIC_PASSWORD" \
+	    --env DATOMIC_DATABASE_NAME=$$DATOMIC_DATABASE_NAME                 \
+	    --env DATOMIC_DATABASE_URL=$$DATOMIC_DATABASE_URL                   \
+	    --env DATOMIC_ACCESS_KEY_ID=$$DATOMIC_ACCESS_KEY_ID                 \
+	    --env DATOMIC_SECRET_ACCESS_KEY=$$DATOMIC_SECRET_ACCESS_KEY         \
+	    --env DATOMIC_STORAGE_ADMIN_PASSWORD=$$DATOMIC_STORAGE_ADMIN_PASSWORD     \
+	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
 	    --network datomic                                                   \
 	    --publish 8999:8999                                                 \
 	    --volume datomic-data:/srv/datomic/data                             \
@@ -118,7 +118,7 @@ create-infra: is-defined-FLY_ORGANIZATION
 	@APPS="$$($(FLY) apps list)";                                           \
 	for APP in transactor peer-server console; do                           \
 	    if ! echo $$APPS | grep -cq datomic-$$APP; then                     \
-	        $(FLY) apps create datomic-$$APP -o $(FLY_ORGANIZATION);        \
+	        $(FLY) apps create datomic-$$APP -o $$FLY_ORGANIZATION;         \
 	    fi;                                                                 \
 	done
 
