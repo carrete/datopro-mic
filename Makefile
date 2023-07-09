@@ -63,11 +63,36 @@ build: has-command-podman is-defined-CONTAINER_REGISTRY is-defined-CONTAINER_PAT
 push: is-repo-clean has-command-podman is-defined-CONTAINER_REGISTRY is-defined-CONTAINER_PATH is-defined-CONTAINER_VERSION build login
 	@podman push $(CONTAINER_REGISTRY)/$(CONTAINER_PATH):$(CONTAINER_VERSION)
 
+.PHONY: run-postgres
+run-postgres: is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD is-defined-SLUG create-network-datomic
+	@podman run --rm -it --name datomic-postgres-$$SLUG.flycast             \
+	    --env POSTGRES_USER=$$POSTGRES_USERNAME                             \
+	    --env POSTGRES_PASSWORD=$$POSTGRES_PASSWORD                         \
+	    --network datomic                                                   \
+	    --publish 5432:5432                                                 \
+	    --volume postgres-data:/var/lib/postgresql/data                     \
+	    docker.io/library/postgres:15
+
+.PHONY: setup-postgres
+setup-postgres: is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD is-defined-POSTGRES_DATOMIC_USERNAME is-defined-POSTGRES_DATOMIC_PASSWORD is-defined-SLUG build
+	@podman run --rm -it                                                    \
+	    --env POSTGRES_USERNAME=$$POSTGRES_USERNAME                         \
+	    --env POSTGRES_PASSWORD=$$POSTGRES_PASSWORD                         \
+	    --env POSTGRES_DATOMIC_USERNAME=$$POSTGRES_DATOMIC_USERNAME         \
+	    --env POSTGRES_DATOMIC_PASSWORD=$$POSTGRES_DATOMIC_PASSWORD         \
+	    --env SLUG=$$SLUG                                                   \
+	    --network datomic                                                   \
+	    --volume $(HERE)/datomic-pro:/opt/datomic-pro                       \
+	    $(CONTAINER_REGISTRY)/$(CONTAINER_PATH):$(CONTAINER_VERSION)        \
+	    make $@
+
 .PHONY: run-transactor
-run-transactor: is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG build
+run-transactor: is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD is-defined-POSTGRES_DATOMIC_USERNAME is-defined-POSTGRES_DATOMIC_PASSWORD is-defined-SLUG build
 	@podman run --rm -it --name datomic-transactor-$$SLUG.internal          \
-	    --env DATOMIC_STORAGE_ADMIN_PASSWORD=$$DATOMIC_STORAGE_ADMIN_PASSWORD     \
-	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
+	    --env POSTGRES_USERNAME=$$POSTGRES_USERNAME                         \
+	    --env POSTGRES_PASSWORD=$$POSTGRES_PASSWORD                         \
+	    --env POSTGRES_DATOMIC_USERNAME=$$POSTGRES_DATOMIC_USERNAME         \
+	    --env POSTGRES_DATOMIC_PASSWORD=$$POSTGRES_DATOMIC_PASSWORD         \
 	    --env SLUG=$$SLUG                                                   \
 	    --network datomic                                                   \
 	    --publish 4334:4334                                                 \
@@ -89,9 +114,10 @@ run-peer-server: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_UR
 	    make $@
 
 .PHONY: run-console
-run-console: is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG build
+run-console: is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD is-defined-SLUG build
 	@podman run --rm -it --name datomic-console-$$SLUG.internal             \
-	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
+	    --env POSTGRES_USERNAME=$$POSTGRES_USERNAME                         \
+	    --env POSTGRES_PASSWORD=$$POSTGRES_PASSWORD                         \
 	    --env SLUG=$$SLUG                                                   \
 	    --network datomic                                                   \
 	    --publish 8999:8999                                                 \
@@ -99,14 +125,16 @@ run-console: is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG build
 	    make $@
 
 .PHONY: shell
-shell: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DATOMIC_SECRET_ACCESS_KEY is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG build
+shell: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DATOMIC_SECRET_ACCESS_KEY is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD is-defined-POSTGRES_DATOMIC_USERNAME is-defined-POSTGRES_DATOMIC_PASSWORD is-defined-SLUG build
 	@podman run --rm -it --name datomic-shell.internal                      \
 	    --env DATOMIC_DATABASE_NAME=$$DATOMIC_DATABASE_NAME                 \
 	    --env DATOMIC_DATABASE_URL=$$DATOMIC_DATABASE_URL                   \
 	    --env DATOMIC_ACCESS_KEY_ID=$$DATOMIC_ACCESS_KEY_ID                 \
 	    --env DATOMIC_SECRET_ACCESS_KEY=$$DATOMIC_SECRET_ACCESS_KEY         \
-	    --env DATOMIC_STORAGE_ADMIN_PASSWORD=$$DATOMIC_STORAGE_ADMIN_PASSWORD     \
-	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
+	    --env POSTGRES_USERNAME=$$POSTGRES_USERNAME                         \
+	    --env POSTGRES_PASSWORD=$$POSTGRES_PASSWORD                         \
+	    --env POSTGRES_DATOMIC_USERNAME=$$POSTGRES_DATOMIC_USERNAME         \
+	    --env POSTGRES_DATOMIC_PASSWORD=$$POSTGRES_DATOMIC_PASSWORD         \
 	    --env SLUG=$$SLUG                                                   \
 	    --network datomic                                                   \
 	    --publish 8999:8999                                                 \
@@ -117,12 +145,23 @@ shell: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defin
 
 FLY := $(HERE)/.bin/fly
 
+.PHONY: create-postgres
+create-postgres: is-defined-FLY_ORGANIZATION is-defined-POSTGRES_PASSWORD is-defined-SLUG
+	@APPS="$$($(FLY) apps list)";                                           \
+	if ! echo $$APPS | grep -cq datomic-postgres-$$SLUG; then               \
+	    $(FLY) postgres create                                              \
+	      -n datomic-postgres-$$SLUG                                        \
+	      -o $$FLY_ORGANIZATION                                             \
+	      -p "$$POSTGRES_PASSWORD"                                          \
+	      -r scl;                                                           \
+	fi                                                                      \
+
 .PHONY: set-slug
 set-slug: has-command-sed is-defined-SLUG
 	@sed -i "s/@SLUG@/$$SLUG/g" *.toml
 
 .PHONY: create-infra
-create-infra: is-defined-FLY_ORGANIZATION is-defined-SLUG set-slug
+create-infra: is-defined-FLY_ORGANIZATION is-defined-SLUG set-slug create-postgres
 	@APPS="$$($(FLY) apps list)";                                           \
 	for APP in transactor peer-server console; do                           \
 	    if ! echo $$APPS | grep -cq datomic-$$APP-$$SLUG; then              \
@@ -133,14 +172,14 @@ create-infra: is-defined-FLY_ORGANIZATION is-defined-SLUG set-slug
 .PHONY: destroy-infra
 destroy-infra: is-defined-SLUG
 	@APPS="$$($(FLY) apps list)";                                           \
-	for APP in transactor peer-server console; do                           \
+	for APP in postgres transactor peer-server console; do                  \
 	    if echo $$APPS | grep -cq datomic-$$APP-$$SLUG; then                \
 	        $(FLY) apps destroy datomic-$$APP-$$SLUG -y;                    \
 	    fi;                                                                 \
 	done
 
 .PHONY: set-secrets
-set-secrets: export SECRETS=DATOMIC_STORAGE_ADMIN_PASSWORD DATOMIC_STORAGE_DATOMIC_PASSWORD DATOMIC_ACCESS_KEY_ID DATOMIC_SECRET_ACCESS_KEY DATOMIC_DATABASE_NAME DATOMIC_DATABASE_URL SLUG
+set-secrets: export SECRETS=DATOMIC_ACCESS_KEY_ID DATOMIC_SECRET_ACCESS_KEY DATOMIC_DATABASE_NAME DATOMIC_DATABASE_URL POSTGRES_USERNAME POSTGRES_PASSWORD POSTGRES_DATOMIC_USERNAME POSTGRES_DATOMIC_PASSWORD SLUG
 set-secrets: is-defined-SLUG
 	@for APP in transactor peer-server console; do                          \
 	    echo "### Set secrets for $$APP-$$SLUG";                            \
@@ -158,13 +197,15 @@ set-secrets: is-defined-SLUG
 
 .PHONY: list-secrets
 list-secrets: is-defined-SLUG
-	@for APP in transactor peer-server console; do                          \
+	@for APP in postgres transactor peer-server console; do                 \
 	    echo "### Secrets set for $$APP-$$SLUG";                            \
 	    $(FLY) secrets list -a datomic-$$APP-$$SLUG;                        \
 	done
 
 .PHONY: deploy
 deploy: is-defined-SLUG create-infra set-secrets
+# TODO: @$(FLY) deploy -c datomic-postgres.toml --vm-memory 1024                \
+#           -i docker.io/flyio/postgres-flex:15.3
 	@for APP in transactor peer-server console; do                          \
 	    echo "### Deploy $$APP-$$SLUG";                                     \
 	    $(FLY) deploy -c datomic-$$APP.toml --vm-memory 2048                \
@@ -173,10 +214,15 @@ deploy: is-defined-SLUG create-infra set-secrets
 
 .PHONY: status
 status: is-defined-SLUG
-	@for APP in transactor peer-server console; do                          \
+	@for APP in postgres transactor peer-server console; do                 \
 	    echo "### Status of $$APP-$$SLUG";                                  \
 	    $(FLY) status -a datomic-$$APP-$$SLUG;                              \
 	done
+
+.PHONY: forward-postgres
+forward-postgres: export PODMAN_EXTRA_RUN_ARGS=--publish 5432:5432
+forward-postgres: is-defined-SLUG
+	@$(FLY) proxy 5432:5432 -b 0.0.0.0 -a datomic-postgres-$$SLUG
 
 .PHONY: forward-transactor
 forward-transactor: export PODMAN_EXTRA_RUN_ARGS=--publish 4334:4334

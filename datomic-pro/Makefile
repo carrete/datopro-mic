@@ -36,16 +36,24 @@ endif
 shell: is-in-container has-command-bash
 	@bash --login
 
+.PHONY: setup-postgres
+setup-postgres: is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD is-defined-POSTGRES_DATOMIC_USERNAME is-defined-POSTGRES_DATOMIC_PASSWORD is-defined-SLUG
+	@psql -qf setup-postgres.sql                                            \
+	    --set POSTGRES_USERNAME=$$POSTGRES_USERNAME                         \
+	    --set DATOMIC_USERNAME=$$POSTGRES_DATOMIC_USERNAME                  \
+	    --set DATOMIC_PASSWORD=$$POSTGRES_DATOMIC_PASSWORD                  \
+	    postgresql://$$POSTGRES_USERNAME:$$POSTGRES_PASSWORD@datomic-postgres-$$SLUG.flycast
+
 .PHONY: transactor.properties
-transactor.properties: is-in-container is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG
+transactor.properties: is-in-container is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD is-defined-SLUG
 	@cat transactor.properties.in                                           \
-	    | sed -e "s#@STORAGE_ADMIN_PASSWORD@#$$DATOMIC_STORAGE_ADMIN_PASSWORD#"     \
-	    | sed -e "s#@STORAGE_DATOMIC_PASSWORD@#$$DATOMIC_STORAGE_DATOMIC_PASSWORD#" \
+	    | sed -e "s#@POSTGRES_USERNAME@#$$POSTGRES_USERNAME#"               \
+	    | sed -e "s#@POSTGRES_PASSWORD@#$$POSTGRES_PASSWORD#"               \
 	    | sed -e "s#@SLUG@#$$SLUG#"                                         \
 	    > /tmp/transactor.properties
 
 .PHONY: run-transactor
-run-transactor: is-in-container transactor.properties
+run-transactor: is-in-container setup-postgres transactor.properties
 	@datomic-pro/bin/transactor /tmp/transactor.properties
 
 .PHONY: createdb
@@ -61,5 +69,5 @@ run-peer-server: is-in-container is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DAT
 	    #
 
 .PHONY: run-console
-run-console: is-in-container is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG
-	@datomic-pro/bin/console -p 8999 datomic-transactor-$$SLUG datomic:dev://datomic-transactor-$$SLUG.internal:4334?password=$$DATOMIC_STORAGE_DATOMIC_PASSWORD
+run-console: is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD is-defined-SLUG is-in-container
+	@datomic-pro/bin/console -p 8999 datomic-transactor-$$SLUG "datomic:sql://?jdbc:postgresql://datomic-postgres-$$SLUG.flycast:5432/datomic?user=$$POSTGRES_USERNAME&password=$$POSTGRES_PASSWORD"

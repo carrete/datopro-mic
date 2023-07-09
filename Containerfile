@@ -8,6 +8,7 @@ RUN apt -q update                                                               
     && DEBIAN_FRONTEND=noninteractive                                           \
     apt-get -q -y install                                                       \
         make                                                                    \
+        postgresql-client                                                       \
     && apt -q clean                                                             \
     && rm -rf /var/lib/apt/lists/*
 

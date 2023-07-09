@@ -1,11 +1,11 @@
-protocol=dev
+protocol=sql
 host=0.0.0.0
 alt-host=datomic-transactor-@SLUG@.internal
 port=4334
-data-dir=/srv/datomic/data
-storage-access=remote
-storage-admin-password=@STORAGE_ADMIN_PASSWORD@
-storage-datomic-password=@STORAGE_DATOMIC_PASSWORD@
 memory-index-threshold=32m
 memory-index-max=256m
 object-cache-max=128m
+sql-url=jdbc:postgresql://datomic-postgres-@SLUG@.flycast:5432/datomic
+sql-user=@POSTGRES_USERNAME@
+sql-password=@POSTGRES_PASSWORD@
+sql-driver-class=org.postgresql.Driver
