@@ -149,6 +149,7 @@ set-secrets:
 .PHONY: list-secrets
 list-secrets:
 	@for APP in transactor peer-server console; do                          \
+	    echo "### $$APP";                                                   \
 	    $(FLY) secrets list -a datomic-$$APP;                               \
 	done
 
