@@ -63,11 +63,31 @@ build: has-command-podman is-defined-CONTAINER_REGISTRY is-defined-CONTAINER_SLU
 push: is-repo-clean has-command-podman is-defined-CONTAINER_REGISTRY is-defined-CONTAINER_SLUG is-defined-CONTAINER_VERSION build login
 	@podman push $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)
 
+.PHONY: run-postgres
+run-postgres: is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD create-network-datomic
+	@podman run --rm --network datomic --pull newer                         \
+	    --env POSTGRES_USER=$$POSTGRES_USERNAME                             \
+	    --env POSTGRES_PASSWORD=$$POSTGRES_PASSWORD                         \
+	    --name datomic-postgres.internal                                    \
+	    --volume postgres-data:/var/lib/postgresql/data                     \
+	    docker.io/library/postgres:15
+
+.PHONY: setup-postgres
+setup-postgres: is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD is-defined-POSTGRES_DATOMIC_USERNAME is-defined-POSTGRES_DATOMIC_PASSWORD build
+	@podman run --rm --network datomic                                      \
+	    --env POSTGRES_USERNAME=$$POSTGRES_USERNAME                         \
+	    --env POSTGRES_PASSWORD=$$POSTGRES_PASSWORD                         \
+	    --env POSTGRES_DATOMIC_USERNAME=$$POSTGRES_DATOMIC_USERNAME         \
+	    --env POSTGRES_DATOMIC_PASSWORD=$$POSTGRES_DATOMIC_PASSWORD         \
+	    --volume $(HERE)/datomic-pro:/opt/datomic-pro                       \
+	    $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)        \
+	    make $@
+
 .PHONY: run-transactor
-run-transactor: is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD build
+run-transactor: is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD build
 	@podman run --rm -it --name datomic-transactor.internal                 \
-	    --env DATOMIC_STORAGE_ADMIN_PASSWORD=$$DATOMIC_STORAGE_ADMIN_PASSWORD     \
-	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
+	    --env POSTGRES_USERNAME=$$POSTGRES_USERNAME                         \
+	    --env POSTGRES_PASSWORD=$$POSTGRES_PASSWORD                         \
 	    --network datomic                                                   \
 	    --volume datomic-data:/srv/datomic/data                             \
 	    $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)        \
@@ -85,25 +105,28 @@ run-peer-server: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_UR
 	    make $@
 
 .PHONY: run-console
-run-console: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD build
+run-console: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD build
 	@podman run --rm -it --name datomic-console.internal                    \
 	    --env DATOMIC_DATABASE_NAME=$$DATOMIC_DATABASE_NAME                 \
 	    --env DATOMIC_DATABASE_URL=$$DATOMIC_DATABASE_URL                   \
-	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
+	    --env POSTGRES_USERNAME=$$POSTGRES_USERNAME                         \
+	    --env POSTGRES_PASSWORD=$$POSTGRES_PASSWORD                         \
 	    --network datomic                                                   \
 	    --publish 8999:8999                                                 \
 	    $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)        \
 	    make $@
 
 .PHONY: shell
-shell: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DATOMIC_SECRET_ACCESS_KEY is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD build
+shell: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DATOMIC_SECRET_ACCESS_KEY is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD is-defined-POSTGRES_DATOMIC_USERNAME is-defined-POSTGRES_DATOMIC_PASSWORD build
 	@podman run --rm -it --name datomic-shell.internal                      \
 	    --env DATOMIC_DATABASE_NAME=$$DATOMIC_DATABASE_NAME                 \
 	    --env DATOMIC_DATABASE_URL=$$DATOMIC_DATABASE_URL                   \
 	    --env DATOMIC_ACCESS_KEY_ID=$$DATOMIC_ACCESS_KEY_ID                 \
 	    --env DATOMIC_SECRET_ACCESS_KEY=$$DATOMIC_SECRET_ACCESS_KEY         \
-	    --env DATOMIC_STORAGE_ADMIN_PASSWORD=$$DATOMIC_STORAGE_ADMIN_PASSWORD     \
-	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
+	    --env POSTGRES_USERNAME=$$POSTGRES_USERNAME                         \
+	    --env POSTGRES_PASSWORD=$$POSTGRES_PASSWORD                         \
+	    --env POSTGRES_DATOMIC_USERNAME=$$POSTGRES_DATOMIC_USERNAME         \
+	    --env POSTGRES_DATOMIC_PASSWORD=$$POSTGRES_DATOMIC_PASSWORD         \
 	    --network datomic                                                   \
 	    --publish 8999:8999                                                 \
 	    --volume datomic-data:/srv/datomic/data                             \
@@ -125,14 +148,14 @@ create-infra: is-defined-FLY_ORGANIZATION
 .PHONY: destroy-infra
 destroy-infra:
 	@APPS="$$($(FLY) apps list)";                                           \
-	for APP in transactor peer-server console; do                           \
+	for APP in postgres transactor peer-server console; do                  \
 	    if echo $$APPS | grep -cq datomic-$$APP; then                       \
 	        $(FLY) apps destroy datomic-$$APP -y;                           \
 	    fi;                                                                 \
 	done
 
 .PHONY: set-secrets
-set-secrets: export SECRETS=DATOMIC_STORAGE_ADMIN_PASSWORD DATOMIC_STORAGE_DATOMIC_PASSWORD DATOMIC_ACCESS_KEY_ID DATOMIC_SECRET_ACCESS_KEY DATOMIC_DATABASE_NAME DATOMIC_DATABASE_URL
+set-secrets: export SECRETS=DATOMIC_ACCESS_KEY_ID DATOMIC_SECRET_ACCESS_KEY DATOMIC_DATABASE_NAME DATOMIC_DATABASE_URL POSTGRES_USERNAME POSTGRES_PASSWORD POSTGRES_DATOMIC_USERNAME POSTGRES_DATOMIC_PASSWORD
 set-secrets:
 	@for APP in transactor peer-server console; do                          \
 	    echo "### $$APP";                                                   \
@@ -150,13 +173,15 @@ set-secrets:
 
 .PHONY: list-secrets
 list-secrets:
-	@for APP in transactor peer-server console; do                          \
+	@for APP in postgres transactor peer-server console; do                 \
 	    echo "### $$APP";                                                   \
 	    $(FLY) secrets list -a datomic-$$APP;                               \
 	done
 
 .PHONY: deploy
 deploy: is-defined-CONTAINER_REGISTRY is-defined-CONTAINER_SLUG is-defined-CONTAINER_VERSION create-infra set-secrets
+# TODO: @$(FLY) deploy -c datomic-postgres.toml --vm-memory 1024                \
+#           -i docker.io/flyio/postgres-flex:15.3
 	@for APP in transactor peer-server console; do                          \
 	    $(FLY) deploy -c datomic-$$APP.toml --vm-memory 2048                \
 	      -i $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION);  \
@@ -164,7 +189,7 @@ deploy: is-defined-CONTAINER_REGISTRY is-defined-CONTAINER_SLUG is-defined-CONTA
 
 .PHONY: status
 status:
-	@for APP in transactor peer-server console; do                          \
+	@for APP in postgres transactor peer-server console; do                 \
 	    echo "### $$APP";                                                   \
 	    $(FLY) status -a datomic-$$APP;                                     \
 	done

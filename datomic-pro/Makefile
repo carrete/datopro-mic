@@ -32,11 +32,19 @@ is-in-container:
 shell: is-in-container has-command-bash
 	@bash --login
 
+.PHONY: setup-postgres
+setup-postgres: is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD is-defined-POSTGRES_DATOMIC_USERNAME is-defined-POSTGRES_DATOMIC_PASSWORD
+	@psql -f setup-postgres.sql                                             \
+	    --set postgres_username=$$POSTGRES_USERNAME                         \
+	    --set datomic_username=$$POSTGRES_DATOMIC_USERNAME                  \
+	    --set datomic_password=$$POSTGRES_DATOMIC_PASSWORD                  \
+	    postgresql://$$POSTGRES_USERNAME:$$POSTGRES_PASSWORD@datomic-postgres.internal
+
 .PHONY: transactor.properties
-transactor.properties: is-in-container is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD
+transactor.properties: is-in-container is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD
 	@cat transactor.properties.in                                           \
-	    | sed -e "s#@STORAGE_ADMIN_PASSWORD@#$$DATOMIC_STORAGE_ADMIN_PASSWORD#"     \
-	    | sed -e "s#@STORAGE_DATOMIC_PASSWORD@#$$DATOMIC_STORAGE_DATOMIC_PASSWORD#" \
+	    | sed -e "s#@POSTGRES_USERNAME@#$$POSTGRES_USERNAME#"               \
+	    | sed -e "s#@POSTGRES_PASSWORD@#$$POSTGRES_PASSWORD#"               \
 	    > /tmp/transactor.properties
 
 .PHONY: run-transactor
@@ -56,5 +64,5 @@ run-peer-server: is-in-container is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DAT
 	    #
 
 .PHONY: run-console
-run-console: is-in-container is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD
-	@datomic-pro/bin/console -p 8999 localhost datomic:dev://datomic-transactor.internal:4334?password=$$DATOMIC_STORAGE_DATOMIC_PASSWORD
+run-console: is-defined-POSTGRES_USERNAME is-defined-POSTGRES_PASSWORD is-in-container
+	@datomic-pro/bin/console -p 8999 localhost "datomic:sql://?jdbc:postgresql://datomic-postgres.internal:5432/datomic?user=$$POSTGRES_USERNAME&password=$$POSTGRES_PASSWORD"
