@@ -159,3 +159,10 @@ deploy: is-defined-CONTAINER_REGISTRY is-defined-CONTAINER_SLUG is-defined-CONTA
 	    $(FLY) deploy -c datomic-$$APP.toml --vm-memory 2048                \
 	      -i $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION);  \
 	done
+
+.PHONY: status
+status:
+	@for APP in transactor peer-server console; do                          \
+	    echo "### $$APP";                                                   \
+	    $(FLY) status -a datomic-$$APP;                                     \
+	done
