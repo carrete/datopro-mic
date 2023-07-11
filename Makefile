@@ -135,12 +135,14 @@ destroy-infra:
 set-secrets: export SECRETS=DATOMIC_STORAGE_ADMIN_PASSWORD DATOMIC_STORAGE_DATOMIC_PASSWORD DATOMIC_ACCESS_KEY_ID DATOMIC_SECRET_ACCESS_KEY DATOMIC_DATABASE_NAME DATOMIC_DATABASE_URL
 set-secrets:
 	@for APP in transactor peer-server console; do                          \
+	    echo "### $$APP";                                                   \
 	    SECRETS_LIST="$$($(FLY) secrets list -a datomic-$$APP)";            \
 	    for SECRET in $$SECRETS; do                                         \
 	        if [[ -n $$(printenv $$SECRET) ]]; then                         \
 	            if ! echo $$SECRETS_LIST | grep -cq $$SECRET; then          \
 	                $(FLY) secrets set -a datomic-$$APP                     \
-			  $$SECRET=$$(printenv $$SECRET);                       \
+			  $$SECRET=$$(printenv $$SECRET) > /dev/null;           \
+	                echo "Set $$SECRET";                                    \
 	            fi;                                                         \
 	        fi;                                                             \
 	    done;                                                               \
