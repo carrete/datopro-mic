@@ -1,4 +1,4 @@
-app = "datomic-console"
+app = "datomic-console-@SLUG@"
 primary_region = "scl"
 
 [experimental]

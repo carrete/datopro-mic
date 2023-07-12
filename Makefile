@@ -64,39 +64,42 @@ push: is-repo-clean has-command-podman is-defined-CONTAINER_REGISTRY is-defined-
 	@podman push $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)
 
 .PHONY: run-transactor
-run-transactor: is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD build
-	@podman run --rm -it --name datomic-transactor.internal                 \
+run-transactor: is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG build
+	@podman run --rm -it --name datomic-transactor-$$SLUG.internal          \
 	    --env DATOMIC_STORAGE_ADMIN_PASSWORD=$$DATOMIC_STORAGE_ADMIN_PASSWORD     \
 	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
+	    --env SLUG=$$SLUG                                                   \
 	    --network datomic                                                   \
 	    --volume datomic-data:/srv/datomic/data                             \
 	    $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)        \
 	    make $@
 
 .PHONY: run-peer-server
-run-peer-server: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DATOMIC_SECRET_ACCESS_KEY build
-	@podman run --rm -it --name datomic-peer-server.internal                \
+run-peer-server: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DATOMIC_SECRET_ACCESS_KEY is-defined-SLUG build
+	@podman run --rm -it --name datomic-peer-server-$$SLUG.internal         \
 	    --env DATOMIC_DATABASE_NAME=$$DATOMIC_DATABASE_NAME                 \
 	    --env DATOMIC_DATABASE_URL=$$DATOMIC_DATABASE_URL                   \
 	    --env DATOMIC_ACCESS_KEY_ID=$$DATOMIC_ACCESS_KEY_ID                 \
 	    --env DATOMIC_SECRET_ACCESS_KEY=$$DATOMIC_SECRET_ACCESS_KEY         \
+	    --env SLUG=$$SLUG                                                   \
 	    --network datomic                                                   \
 	    $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)        \
 	    make $@
 
 .PHONY: run-console
-run-console: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD build
-	@podman run --rm -it --name datomic-console.internal                    \
+run-console: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG build
+	@podman run --rm -it --name datomic-console-$$SLUG.internal             \
 	    --env DATOMIC_DATABASE_NAME=$$DATOMIC_DATABASE_NAME                 \
 	    --env DATOMIC_DATABASE_URL=$$DATOMIC_DATABASE_URL                   \
 	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
+	    --env SLUG=$$SLUG                                                   \
 	    --network datomic                                                   \
 	    --publish 8999:8999                                                 \
 	    $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)        \
 	    make $@
 
 .PHONY: shell
-shell: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DATOMIC_SECRET_ACCESS_KEY is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD build
+shell: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DATOMIC_SECRET_ACCESS_KEY is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG build
 	@podman run --rm -it --name datomic-shell.internal                      \
 	    --env DATOMIC_DATABASE_NAME=$$DATOMIC_DATABASE_NAME                 \
 	    --env DATOMIC_DATABASE_URL=$$DATOMIC_DATABASE_URL                   \
@@ -104,6 +107,7 @@ shell: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defin
 	    --env DATOMIC_SECRET_ACCESS_KEY=$$DATOMIC_SECRET_ACCESS_KEY         \
 	    --env DATOMIC_STORAGE_ADMIN_PASSWORD=$$DATOMIC_STORAGE_ADMIN_PASSWORD     \
 	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
+	    --env SLUG=$$SLUG                                                   \
 	    --network datomic                                                   \
 	    --publish 8999:8999                                                 \
 	    --volume datomic-data:/srv/datomic/data                             \
@@ -113,34 +117,38 @@ shell: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defin
 
 FLY := $(HERE)/contrib/fly
 
+.PHONY: set-slug
+set-slug: has-command-sed is-defined-SLUG
+	@sed -i "s/@SLUG@/$$SLUG/g" *.toml
+
 .PHONY: create-infra
-create-infra: is-defined-FLY_ORGANIZATION
+create-infra: is-defined-FLY_ORGANIZATION is-defined-SLUG set-slug
 	@APPS="$$($(FLY) apps list)";                                           \
 	for APP in transactor peer-server console; do                           \
-	    if ! echo $$APPS | grep -cq datomic-$$APP; then                     \
-	        $(FLY) apps create datomic-$$APP -o $$FLY_ORGANIZATION;         \
+	    if ! echo $$APPS | grep -cq datomic-$$APP-$$SLUG; then              \
+	        $(FLY) apps create datomic-$$APP-$$SLUG -o $$FLY_ORGANIZATION;  \
 	    fi;                                                                 \
 	done
 
 .PHONY: destroy-infra
-destroy-infra:
+destroy-infra: is-defined-SLUG
 	@APPS="$$($(FLY) apps list)";                                           \
 	for APP in transactor peer-server console; do                           \
-	    if echo $$APPS | grep -cq datomic-$$APP; then                       \
-	        $(FLY) apps destroy datomic-$$APP -y;                           \
+	    if echo $$APPS | grep -cq datomic-$$APP-$$SLUG; then                \
+	        $(FLY) apps destroy datomic-$$APP-$$SLUG -y;                    \
 	    fi;                                                                 \
 	done
 
 .PHONY: set-secrets
-set-secrets: export SECRETS=DATOMIC_STORAGE_ADMIN_PASSWORD DATOMIC_STORAGE_DATOMIC_PASSWORD DATOMIC_ACCESS_KEY_ID DATOMIC_SECRET_ACCESS_KEY DATOMIC_DATABASE_NAME DATOMIC_DATABASE_URL
-set-secrets:
+set-secrets: export SECRETS=DATOMIC_STORAGE_ADMIN_PASSWORD DATOMIC_STORAGE_DATOMIC_PASSWORD DATOMIC_ACCESS_KEY_ID DATOMIC_SECRET_ACCESS_KEY DATOMIC_DATABASE_NAME DATOMIC_DATABASE_URL SLUG
+set-secrets: is-defined-SLUG
 	@for APP in transactor peer-server console; do                          \
-	    echo "### $$APP";                                                   \
-	    SECRETS_LIST="$$($(FLY) secrets list -a datomic-$$APP)";            \
+	    echo "### $$APP-$$SLUG";                                            \
+	    SECRETS_LIST="$$($(FLY) secrets list -a datomic-$$APP-$$SLUG)";     \
 	    for SECRET in $$SECRETS; do                                         \
 	        if [[ -n $$(printenv $$SECRET) ]]; then                         \
 	            if ! echo $$SECRETS_LIST | grep -cq $$SECRET; then          \
-	                $(FLY) secrets set -a datomic-$$APP                     \
+	                $(FLY) secrets set -a datomic-$$APP-$$SLUG              \
 			  $$SECRET=$$(printenv $$SECRET) > /dev/null;           \
 	                echo "Set $$SECRET";                                    \
 	            fi;                                                         \
@@ -149,10 +157,10 @@ set-secrets:
 	done
 
 .PHONY: list-secrets
-list-secrets:
+list-secrets: is-defined-SLUG
 	@for APP in transactor peer-server console; do                          \
-	    echo "### $$APP";                                                   \
-	    $(FLY) secrets list -a datomic-$$APP;                               \
+	    echo "### $$APP-$$SLUG";                                            \
+	    $(FLY) secrets list -a datomic-$$APP-$$SLUG;                        \
 	done
 
 .PHONY: deploy
@@ -163,8 +171,8 @@ deploy: is-defined-CONTAINER_REGISTRY is-defined-CONTAINER_SLUG is-defined-CONTA
 	done
 
 .PHONY: status
-status:
+status: is-defined-SLUG
 	@for APP in transactor peer-server console; do                          \
-	    echo "### $$APP";                                                   \
-	    $(FLY) status -a datomic-$$APP;                                     \
+	    echo "### $$APP-$$SLUG";                                            \
+	    $(FLY) status -a datomic-$$APP-$$SLUG;                              \
 	done

@@ -33,10 +33,11 @@ shell: is-in-container has-command-bash
 	@bash --login
 
 .PHONY: transactor.properties
-transactor.properties: is-in-container is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD
+transactor.properties: is-in-container is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG
 	@cat transactor.properties.in                                           \
 	    | sed -e "s#@STORAGE_ADMIN_PASSWORD@#$$DATOMIC_STORAGE_ADMIN_PASSWORD#"     \
 	    | sed -e "s#@STORAGE_DATOMIC_PASSWORD@#$$DATOMIC_STORAGE_DATOMIC_PASSWORD#" \
+	    | sed -e "s#@SLUG@#$$SLUG#"                                         \
 	    > /tmp/transactor.properties
 
 .PHONY: run-transactor
@@ -56,5 +57,5 @@ run-peer-server: is-in-container is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DAT
 	    #
 
 .PHONY: run-console
-run-console: is-in-container is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD
-	@datomic-pro/bin/console -p 8999 localhost datomic:dev://datomic-transactor.internal:4334?password=$$DATOMIC_STORAGE_DATOMIC_PASSWORD
+run-console: is-in-container is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG
+	@datomic-pro/bin/console -p 8999 localhost datomic:dev://datomic-transactor-$$SLUG.internal:4334?password=$$DATOMIC_STORAGE_DATOMIC_PASSWORD

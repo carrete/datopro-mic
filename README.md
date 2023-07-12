@@ -17,43 +17,51 @@ this will be required to be proxied too in the future.
 
 * Fork this repo
 
-* [Create a Fly.io Access Token](https://fly.io/user/personal_access_tokens)
-
-* Set the `FLY_ACCESS_TOKEN` secret variable
-  [on GitHub](https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository)
-
-* Change the value of the `CONTAINER_SLUG` variable in the top-level Makefile
-
-  Change `carrete/datopro-mic` to point to your fork of the this repo.
-
-* Change the app names
-
-  Fly.io requires app names to be unique across all accounts worldwide.
-  Replace `XXX` below with an unique string, like your GitHub username.
-
-        for APP in transactor peer-server console; do
-            perl -pi -e "s#datomic-$APP#datomic-$APP-XXX#g" *.toml Makefile datomic-pro/Makefile datomic-pro/transactor.properties.in
-        done
-
 * Set some environment variables
 
-        export FLY_ACCESS_TOKEN="<value of Fly.io Access Token created above>"
-        # Use any Fly.io organization name to which you belong.
-        export FLY_ORGANIZATION="personal"
+        # Fly.io requires app names to be unique across all accounts
+        # worldwide. This slug will be appended to the app names created on
+        # Fly.io, and to the container names when run locally. This slug does
+        # not need to be rememberable. A GitHub username would work, if
+        # another user on Fly.io hasn't already used it.
+        export SLUG="<a short, unique string, e.g. `openssl rand -hex 4`>"
 
-        export DATOMIC_ACCESS_KEY_ID="<a random string, like an uuid>"
-        export DATOMIC_SECRET_ACCESS_KEY="<a random string, like an uuid>"
+        export DATOMIC_ACCESS_KEY_ID="<an unique, hard to guess string, like an uuid>"
+        export DATOMIC_SECRET_ACCESS_KEY="<an unique, hard to guess string, like an uuid>"
 
         # Use any database name. This database will be created when the
         # transactor starts, if it does not already exist.
         export DATOMIC_DATABASE_NAME="test"
 
-        export DATOMIC_STORAGE_ADMIN_PASSWORD="<a random string, like an uuid>"
-        export DATOMIC_STORAGE_DATOMIC_PASSWORD="<a random string, like an uuid>"
+        export DATOMIC_STORAGE_ADMIN_PASSWORD="<an unique, hard to guess string, like an uuid>"
+        export DATOMIC_STORAGE_DATOMIC_PASSWORD="<an unique, hard to guess, like an uuid>"
 
-        # Replace `XXX` below with the same value used in the change app names
-        # step above.
-        export DATOMIC_DATABASE_URL="datomic:dev://datomic-transactor-XXX.internal:4334/$DATOMIC_DATABASE_NAME?password=$DATOMIC_STORAGE_DATOMIC_PASSWORD"
+        export DATOMIC_DATABASE_URL="datomic:dev://datomic-transactor-$SLUG.internal:4334/$DATOMIC_DATABASE_NAME?password=$DATOMIC_STORAGE_DATOMIC_PASSWORD"
+
+### To run this locally...
+
+* Run Datomic Pro locally
+
+  In three separate terminal windows, run `make run-transactor`, `make
+  run-peer-server`, and `make run-console`. Leave these running, then open
+  `http://localhost:8999/browse`
+
+### To run this on Fly.io...
+
+* [Create a Fly.io Access Token](https://fly.io/user/personal_access_tokens)
+
+* Set some additional environment variables
+
+        # Use the same Fly.io Access Token created above.
+        export FLY_ACCESS_TOKEN="fo1_GK..qz"
+        # Use any Fly.io organization name to which you belong.
+        export FLY_ORGANIZATION="personal"
+
+* Set the `FLY_ACCESS_TOKEN`, `FLY_ORGANIZATION`, and `SLUG` secret variables
+  [on GitHub](https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository)
+
+* Change the value of the `CONTAINER_SLUG` variable in the top-level Makefile
+  from `carrete/datopro-mic` to your fork of the this repo
 
 * Setup the infrastructure on Fly.io
 
@@ -62,9 +70,9 @@ this will be required to be proxied too in the future.
   above to different values after this step has been completed.
 
         $ make create-infra set-secrets
-        New app created: datomic-transactor
-        New app created: datomic-peer-server
-        New app created: datomic-console
+        New app created: datomic-transactor-150b16c9
+        New app created: datomic-peer-server-150b16c9
+        New app created: datomic-console-150b16c9
         ### transactor
         Set DATOMIC_STORAGE_ADMIN_PASSWORD
         Set DATOMIC_STORAGE_DATOMIC_PASSWORD
@@ -90,23 +98,15 @@ this will be required to be proxied too in the future.
 * Push your changes to GitHub
 
   The GitHub Action in this repo will create a Datomic Pro container image,
-  push this to the GitHub container registry associated with this repo, and
-  update the virtual machines on Fly.io to use the newly built container
-  image.
+  push this to the GitHub container image registry associated with this repo,
+  and update the virtual machines on Fly.io to use the newly built container
+  image. Each merge into the `main` branch will automatically trigger a new
+  deployment to Fly.io.
 
 * Access the Datomic Console
 
-  Again, replace `XXX` below with the same value used in the change app names
-  step above.
-
-  Open `https://datomic-console-XXX.fly.dev`
+  Open `https://datomic-console-$SLUG.fly.dev`
 
 * Delete the infrastructure on Fly.io
 
         $ make destroy-infra
-
-* Run Datomic Pro locally
-
-  In three separate terminal windows, run `make run-transactor`, `make
-  run-peer-server`, and `make run-console`. Leave these running, then open
-  `http://localhost:8999/browse`.

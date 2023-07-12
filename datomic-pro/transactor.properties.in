@@ -1,6 +1,6 @@
 protocol=dev
 host=0.0.0.0
-alt-host=datomic-transactor.internal
+alt-host=datomic-transactor-@SLUG@.internal
 port=4334
 data-dir=/srv/datomic/data
 storage-access=remote

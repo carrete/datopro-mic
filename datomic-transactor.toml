@@ -1,11 +1,11 @@
-app = "datomic-transactor"
+app = "datomic-transactor-@SLUG@"
 primary_region = "scl"
 
 [experimental]
 cmd = ["make", "run-transactor"]
 
 [checks]
-[checks.datomic-transactor]
+[checks.datomic-transactor-@SLUG@]
 port = 4334
 type = "tcp"
 grace_period = "10s"

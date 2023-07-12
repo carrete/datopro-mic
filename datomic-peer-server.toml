@@ -1,11 +1,11 @@
-app = "datomic-peer-server"
+app = "datomic-peer-server-@SLUG@"
 primary_region = "scl"
 
 [experimental]
 cmd = ["make", "run-peer-server"]
 
 [checks]
-[checks.datomic-peer-server]
+[checks.datomic-peer-server-@SLUG@]
 port = 8998
 type = "tcp"
 grace_period = "10s"
