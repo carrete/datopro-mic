@@ -32,10 +32,10 @@ if [[ -z ${FLY_ACCESS_TOKEN:-} ]]; then
     exit 1
 fi
 
-PODMAN_EXTRA_RUN_ARGS=
+IFS=$' ' PODMAN_EXTRA_RUN_ARGS="${PODMAN_EXTRA_RUN_ARGS:-}"
 
 if test -t 0; then
-    PODMAN_EXTRA_RUN_ARGS="-it"
+    IFS=$' ' PODMAN_EXTRA_RUN_ARGS="-it $PODMAN_EXTRA_RUN_ARGS"
 fi
 
 readonly PODMAN_EXTRA_RUN_ARGS
@@ -49,6 +49,6 @@ podman run -q --rm --name fly $PODMAN_EXTRA_RUN_ARGS                            
     --env HOME=/tmp                                                             \
     --volume "$PWD:/mnt/workdir"                                                \
     --workdir /mnt/workdir                                                      \
-    docker.io/flyio/flyctl:v0.1.51                                              \
+    docker.io/flyio/flyctl:v0.1.62                                              \
     -t "$FLY_ACCESS_TOKEN"                                                      \
     "$@"

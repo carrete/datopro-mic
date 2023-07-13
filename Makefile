@@ -11,7 +11,7 @@ HERE := $(shell cd -P -- $(shell dirname -- $$0) && pwd -P)
 DATOMIC_PRO_VERSION := 1.0.6735
 DATOMIC_PRO_DOWNLOAD_URL := https://datomic-pro-downloads.s3.amazonaws.com/$(DATOMIC_PRO_VERSION)/datomic-pro-$(DATOMIC_PRO_VERSION).zip
 
-CONTAINER_SLUG := carrete/datopro-mic
+CONTAINER_PATH := carrete/datopro-mic
 CONTAINER_REGISTRY := ghcr.io
 CONTAINER_VERSION := $(shell git rev-parse HEAD)
 
@@ -56,12 +56,12 @@ extract-datomic-pro: has-command-unzip is-defined-DATOMIC_PRO_VERSION download-d
 	fi
 
 .PHONY: build
-build: has-command-podman is-defined-CONTAINER_REGISTRY is-defined-CONTAINER_SLUG is-defined-CONTAINER_VERSION extract-datomic-pro create-network-datomic
-	@podman build -t $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION) -f Containerfile .
+build: has-command-podman is-defined-CONTAINER_REGISTRY is-defined-CONTAINER_PATH is-defined-CONTAINER_VERSION extract-datomic-pro create-network-datomic
+	@podman build -t $(CONTAINER_REGISTRY)/$(CONTAINER_PATH):$(CONTAINER_VERSION) -f Containerfile .
 
 .PHONY: push
-push: is-repo-clean has-command-podman is-defined-CONTAINER_REGISTRY is-defined-CONTAINER_SLUG is-defined-CONTAINER_VERSION build login
-	@podman push $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)
+push: is-repo-clean has-command-podman is-defined-CONTAINER_REGISTRY is-defined-CONTAINER_PATH is-defined-CONTAINER_VERSION build login
+	@podman push $(CONTAINER_REGISTRY)/$(CONTAINER_PATH):$(CONTAINER_VERSION)
 
 .PHONY: run-transactor
 run-transactor: is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG build
@@ -70,8 +70,9 @@ run-transactor: is-defined-DATOMIC_STORAGE_ADMIN_PASSWORD is-defined-DATOMIC_STO
 	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
 	    --env SLUG=$$SLUG                                                   \
 	    --network datomic                                                   \
+	    --publish 4334:4334                                                 \
 	    --volume datomic-data:/srv/datomic/data                             \
-	    $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)        \
+	    $(CONTAINER_REGISTRY)/$(CONTAINER_PATH):$(CONTAINER_VERSION)        \
 	    make $@
 
 .PHONY: run-peer-server
@@ -83,7 +84,8 @@ run-peer-server: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_UR
 	    --env DATOMIC_SECRET_ACCESS_KEY=$$DATOMIC_SECRET_ACCESS_KEY         \
 	    --env SLUG=$$SLUG                                                   \
 	    --network datomic                                                   \
-	    $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)        \
+	    --publish 8998:8998                                                 \
+	    $(CONTAINER_REGISTRY)/$(CONTAINER_PATH):$(CONTAINER_VERSION)        \
 	    make $@
 
 .PHONY: run-console
@@ -95,7 +97,7 @@ run-console: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is
 	    --env SLUG=$$SLUG                                                   \
 	    --network datomic                                                   \
 	    --publish 8999:8999                                                 \
-	    $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)        \
+	    $(CONTAINER_REGISTRY)/$(CONTAINER_PATH):$(CONTAINER_VERSION)        \
 	    make $@
 
 .PHONY: shell
@@ -112,7 +114,7 @@ shell: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defin
 	    --publish 8999:8999                                                 \
 	    --volume datomic-data:/srv/datomic/data                             \
 	    --volume $(HERE)/datomic-pro:/opt/datomic-pro                       \
-	    $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION)        \
+	    $(CONTAINER_REGISTRY)/$(CONTAINER_PATH):$(CONTAINER_VERSION)        \
 	    make $@
 
 FLY := $(HERE)/contrib/fly
@@ -143,7 +145,7 @@ destroy-infra: is-defined-SLUG
 set-secrets: export SECRETS=DATOMIC_STORAGE_ADMIN_PASSWORD DATOMIC_STORAGE_DATOMIC_PASSWORD DATOMIC_ACCESS_KEY_ID DATOMIC_SECRET_ACCESS_KEY DATOMIC_DATABASE_NAME DATOMIC_DATABASE_URL SLUG
 set-secrets: is-defined-SLUG
 	@for APP in transactor peer-server console; do                          \
-	    echo "### $$APP-$$SLUG";                                            \
+	    echo "### Set secrets for $$APP-$$SLUG";                            \
 	    SECRETS_LIST="$$($(FLY) secrets list -a datomic-$$APP-$$SLUG)";     \
 	    for SECRET in $$SECRETS; do                                         \
 	        if [[ -n $$(printenv $$SECRET) ]]; then                         \
@@ -159,20 +161,36 @@ set-secrets: is-defined-SLUG
 .PHONY: list-secrets
 list-secrets: is-defined-SLUG
 	@for APP in transactor peer-server console; do                          \
-	    echo "### $$APP-$$SLUG";                                            \
+	    echo "### Secrets set for $$APP-$$SLUG";                            \
 	    $(FLY) secrets list -a datomic-$$APP-$$SLUG;                        \
 	done
 
 .PHONY: deploy
-deploy: is-defined-CONTAINER_REGISTRY is-defined-CONTAINER_SLUG is-defined-CONTAINER_VERSION create-infra set-secrets
+deploy: is-defined-SLUG create-infra set-secrets
 	@for APP in transactor peer-server console; do                          \
+	    echo "### Deploy $$APP-$$SLUG";                                     \
 	    $(FLY) deploy -c datomic-$$APP.toml --vm-memory 2048                \
-	      -i $(CONTAINER_REGISTRY)/$(CONTAINER_SLUG):$(CONTAINER_VERSION);  \
+	      -i $(CONTAINER_REGISTRY)/$(CONTAINER_PATH):$(CONTAINER_VERSION);  \
 	done
 
 .PHONY: status
 status: is-defined-SLUG
 	@for APP in transactor peer-server console; do                          \
-	    echo "### $$APP-$$SLUG";                                            \
+	    echo "### Status of $$APP-$$SLUG";                                  \
 	    $(FLY) status -a datomic-$$APP-$$SLUG;                              \
 	done
+
+.PHONY: forward-transactor
+forward-transactor: export PODMAN_EXTRA_RUN_ARGS=--publish 4334:4334
+forward-transactor: is-defined-SLUG
+	@$(FLY) proxy 4334:4334 -b 0.0.0.0 -a datomic-transactor-$$SLUG
+
+.PHONY: forward-peer-server
+forward-peer-server: export PODMAN_EXTRA_RUN_ARGS=--publish 8998:8998
+forward-peer-server: is-defined-SLUG
+	@$(FLY) proxy 8998:8998 -b 0.0.0.0 -a datomic-peer-server-$$SLUG
+
+.PHONY: forward-console
+forward-console: export PODMAN_EXTRA_RUN_ARGS=--publish 8999:8999
+forward-console: is-defined-SLUG
+	@$(FLY) proxy 8999:8999 -b 0.0.0.0 -a datomic-console-$$SLUG
