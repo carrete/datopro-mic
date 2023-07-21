@@ -89,10 +89,8 @@ run-peer-server: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_UR
 	    make $@
 
 .PHONY: run-console
-run-console: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG build
+run-console: is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG build
 	@podman run --rm -it --name datomic-console-$$SLUG.internal             \
-	    --env DATOMIC_DATABASE_NAME=$$DATOMIC_DATABASE_NAME                 \
-	    --env DATOMIC_DATABASE_URL=$$DATOMIC_DATABASE_URL                   \
 	    --env DATOMIC_STORAGE_DATOMIC_PASSWORD=$$DATOMIC_STORAGE_DATOMIC_PASSWORD \
 	    --env SLUG=$$SLUG                                                   \
 	    --network datomic                                                   \
