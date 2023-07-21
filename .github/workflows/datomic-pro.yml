@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Deploy container image to fly.io
+      - name: Deploy container image to Fly.io
         run: make deploy
     env:
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_ACCESS_TOKEN }}

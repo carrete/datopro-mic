@@ -44,7 +44,7 @@ create-network-%: has-command-podman
 .PHONY: download-datomic-pro
 download-datomic-pro: has-command-curl is-defined-DATOMIC_PRO_DOWNLOAD_URL
 	@if [[ ! -f datomic-pro.zip ]]; then                                    \
-	    curl $(DATOMIC_PRO_DOWNLOAD_URL) -o datomic-pro.zip;                \
+	    curl -s -o datomic-pro.zip $(DATOMIC_PRO_DOWNLOAD_URL);             \
 	fi
 
 .PHONY: extract-datomic-pro

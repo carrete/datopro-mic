@@ -17,8 +17,7 @@ respectively, regardless of where they are run.
 
         # Fly.io requires app names to be unique across all accounts
         # worldwide. This slug will be appended to the app names created on
-        # Fly.io, and to the container names when run locally. This slug does
-        # not need to be rememberable.
+        # Fly.io, and to the container names when run locally.
         $ export SLUG="<a short, unique string, e.g. `openssl rand -hex 4`>"
 
         $ export DATOMIC_ACCESS_KEY_ID="<an unique, hard to guess string, like an uuid>"
@@ -29,7 +28,7 @@ respectively, regardless of where they are run.
 
         # Use any database name. This database will be created when the
         # transactor starts, if it does not already exist.
-        $ export DATOMIC_DATABASE_NAME="test"
+        $ export DATOMIC_DATABASE_NAME="carrete"
 
         $ export DATOMIC_DATABASE_URL="datomic:dev://datomic-transactor-$SLUG.internal:4334/$DATOMIC_DATABASE_NAME?password=$DATOMIC_STORAGE_DATOMIC_PASSWORD"
 

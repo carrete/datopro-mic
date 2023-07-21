@@ -58,4 +58,4 @@ run-peer-server: is-in-container is-defined-DATOMIC_ACCESS_KEY_ID is-defined-DAT
 
 .PHONY: run-console
 run-console: is-in-container is-defined-DATOMIC_STORAGE_DATOMIC_PASSWORD is-defined-SLUG
-	@datomic-pro/bin/console -p 8999 localhost datomic:dev://datomic-transactor-$$SLUG.internal:4334?password=$$DATOMIC_STORAGE_DATOMIC_PASSWORD
+	@datomic-pro/bin/console -p 8999 datomic-transactor-$$SLUG datomic:dev://datomic-transactor-$$SLUG.internal:4334?password=$$DATOMIC_STORAGE_DATOMIC_PASSWORD
