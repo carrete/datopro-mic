@@ -49,6 +49,6 @@ podman run -q --rm --name fly $PODMAN_EXTRA_RUN_ARGS                            
     --env HOME=/tmp                                                             \
     --volume "$PWD:/mnt/workdir"                                                \
     --workdir /mnt/workdir                                                      \
-    docker.io/flyio/flyctl:v0.1.62                                              \
+    docker.io/flyio/flyctl:v0.1.64                                              \
     -t "$FLY_ACCESS_TOKEN"                                                      \
     "$@"
