@@ -34,19 +34,26 @@ respectively, regardless of where they are run.
 
 ### Run Datomic Pro locally
 
-* To use the transactor locally, run:
+* First, run the transactor:
 
         $ make run-transactor
 
-  Keep this running, then connect to the transactor at `localhost:4334`
+  Keep this running, then (optionally) use the
+  [peer library](https://docs.datomic.com/pro/peer/peer-introduction.html)
+  to connect to the transactor at `localhost:4334`
 
-* To use the peer-server locally, run:
+  The transactor must be kept running to use the peer server or console
+  locally
+
+* Next, run the peer-server:
 
         $ make run-peer-server
 
-  Keep this running, then connect to the peer-server at `localhost:8998`
+  Keep this running, then (recommended) use the
+  [client library](https://docs.datomic.com/pro/client/client-introduction.html)
+  to connect to the peer-server at `localhost:8998`
 
-* To use the console locally, run:
+* Then (optionally) run the console:
 
         $ make run-console
 
@@ -55,7 +62,7 @@ respectively, regardless of where they are run.
 ### Run Datomic Pro on Fly.io
 
 * Change the value of the `CONTAINER_PATH` variable in the top-level Makefile
-  from `carrete/datopro-mic` to match your fork of the this repo
+  from `carrete/datopro-mic` to match your fork of this repo
 
 * [Create a Fly.io Access Token](https://fly.io/user/personal_access_tokens)
 
@@ -118,6 +125,9 @@ respectively, regardless of where they are run.
 
   Keep this running, then connect to the transactor at `localhost:4334`
 
+  This does not need to be kept running to use the peer server or console on
+  Fly.io
+
 * To use the peer-server on Fly.io, run:
 
         $ make forward-peer-server
@@ -133,3 +143,7 @@ respectively, regardless of where they are run.
 * To completely remove Datomic Pro from Fly.io, run:
 
         $ make destroy-infra
+
+* To show the status of the services running on Fly.io, run:
+
+        $ make status
