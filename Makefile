@@ -115,7 +115,7 @@ shell: is-defined-DATOMIC_DATABASE_NAME is-defined-DATOMIC_DATABASE_URL is-defin
 	    $(CONTAINER_REGISTRY)/$(CONTAINER_PATH):$(CONTAINER_VERSION)        \
 	    make $@
 
-FLY := $(HERE)/contrib/fly
+FLY := $(HERE)/.bin/fly
 
 .PHONY: set-slug
 set-slug: has-command-sed is-defined-SLUG

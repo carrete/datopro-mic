@@ -40,15 +40,15 @@ fi
 
 readonly PODMAN_EXTRA_RUN_ARGS
 
-# TODO: `--env HOME=/tmp` is required to run this script in a GitHub Action:
-#   Error accessing config directory at $HOME/.fly $HOME is not defined
-#   Error: failed determining user home directory: $HOME is not defined
-# https://github.com/carrete/hello-world-container/actions/runs/5073262904/jobs/9112053093
+FLY_IMAGE=docker.io/flyio/flyctl:v0.1.111
+readonly FLY_IMAGE
 
-podman run -q --rm --name fly $PODMAN_EXTRA_RUN_ARGS                            \
-    --env HOME=/tmp                                                             \
-    --volume "$PWD:/mnt/workdir"                                                \
-    --workdir /mnt/workdir                                                      \
-    docker.io/flyio/flyctl:v0.1.64                                              \
+podman pull -q $FLY_IMAGE
+podman run --rm $PODMAN_EXTRA_RUN_ARGS                                          \
+    -e HOME=/tmp                                                                \
+    -v "$PWD":/mnt/workdir                                                      \
+    -v /var/run/docker.sock:/var/run/docker.sock:ro                             \
+    -w /mnt/workdir                                                             \
+    "$FLY_IMAGE"                                                                \
     -t "$FLY_ACCESS_TOKEN"                                                      \
     "$@"
