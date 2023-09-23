@@ -18,6 +18,8 @@ has-command-%:
 is-defined-%:
 	@$(if $(value $*),,$(error The environment variable $* is undefined))
 
+IS_IN_CONTAINER ?= 0
+
 define CONTAINER_REQUIRED_MESSAGE
 
 This command must be run *inside* the container. Please use the Makefile in
@@ -26,7 +28,9 @@ endef
 
 .PHONY: is-in-container
 is-in-container:
-	@$(if $(shell ls /.fly /run/.containerenv 2>/dev/null),,$(error $(CONTAINER_REQUIRED_MESSAGE)))
+ifneq ($(IS_IN_CONTAINER),1)
+	@$(if $(shell grep -cs dumb-init /proc/1/cmdline),,$(error $(CONTAINER_REQUIRED_MESSAGE)))
+endif
 
 .PHONY: shell
 shell: is-in-container has-command-bash
