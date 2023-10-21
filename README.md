@@ -2,7 +2,7 @@
 
 This is **NOT** in any way associated with, endorsed by, or affiliated with Cognitect.
 
-With this repo you can run [Datomic Pro](https://datomic.com) v1.0.6735
+With this repo you can run [Datomic Pro](https://datomic.com) v1.0.7021
 locally or on [Fly.io](https://fly.io). The transactor, peer-server, and
 console can be connected to on localhost on ports 4334, 8998, and 8999
 respectively, regardless of where they are run.
