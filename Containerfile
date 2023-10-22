@@ -1,5 +1,5 @@
 # -*- coding: utf-8; mode: dockerfile; -*-
-FROM docker.io/library/eclipse-temurin:17
+FROM docker.io/library/eclipse-temurin:21
 LABEL maintainer="Tom Vaughan <tvaughan@tocino.cl>"
 
 ENV LC_ALL=C.UTF-8 LANG=C.UTF-8
