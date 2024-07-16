@@ -45,6 +45,7 @@ readonly FLY_IMAGE
 
 podman pull -q $FLY_IMAGE
 podman run --rm $PODMAN_EXTRA_RUN_ARGS                                          \
+    -e FLY_NO_UPDATE_CHECK=1                                                    \
     -e HOME=/tmp                                                                \
     -v "$PWD":/mnt/workdir                                                      \
     -v /var/run/docker.sock:/var/run/docker.sock:ro                             \
